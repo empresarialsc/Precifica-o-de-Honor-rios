@@ -271,7 +271,10 @@ table.pts th{color:var(--muted); font-weight:600; font-size:.74rem; text-transfo
       <div class="field"><label>Piso mínimo mensal (R$) — Contábil+Fiscal</label><input type="number" id="cfg_piso" min="0" step="10"></div>
     </div>
 
-    <fieldset><legend>Pontos por Regime Tributário</legend><div id="cfg_regime_list" class="row2"></div></fieldset>
+    <fieldset><legend>Pontos por Regime Tributário</legend>
+      <div id="cfg_regime_list"></div>
+      <button class="btn ghost" id="btnAddRegime" type="button" style="margin-top:8px;">+ Adicionar regime</button>
+    </fieldset>
     <fieldset><legend>Pontos por faixa de Faturamento mensal</legend><table class="pts"><thead><tr><th>Faixa</th><th>Pontos</th></tr></thead><tbody id="cfg_fat_list"></tbody></table></fieldset>
     <fieldset><legend>Pontos por faixa de Notas Fiscais/mês</legend><table class="pts"><thead><tr><th>Faixa</th><th>Pontos</th></tr></thead><tbody id="cfg_notas_list"></tbody></table></fieldset>
     <div class="row2">
@@ -602,9 +605,7 @@ function renderConfigView(){
   document.getElementById('cfg_overhead').value = CFG.custos.overheadPct;
   document.getElementById('cfg_impostos').value = CFG.custos.impostosPct;
 
-  document.getElementById('cfg_regime_list').innerHTML = p.regimes.map((r,i)=>`
-    <div class="field"><label>${r.label}</label><input type="number" class="cfg_regime_pts" data-idx="${i}" value="${r.pontos}"></div>
-  `).join('');
+  renderConfigRegimeList();
 
   document.getElementById('cfg_fat_list').innerHTML = p.faturamento.map((f,i)=>`
     <tr><td>${f.label}</td><td><input type="number" class="cfg_fat_pts" data-idx="${i}" value="${f.pontos}" style="width:80px;"></td></tr>
@@ -637,6 +638,29 @@ document.getElementById('btnAddCargo').addEventListener('click', ()=>{
   CFG.custos.cargos.push({nome:"Novo cargo", custoMensal:0, capacidadeHoras:176, horasEstimadas:0});
   renderConfigCargos();
 });
+function renderConfigRegimeList(){
+  const regimes = CFG.pontuacao.regimes;
+  document.getElementById('cfg_regime_list').innerHTML = regimes.map((r,i)=>`
+    <div class="row3" style="align-items:end;">
+      <div class="field" style="margin-bottom:8px;"><label>Regime</label><input type="text" class="cfg_regime_nome" data-idx="${i}" value="${r.label}"></div>
+      <div class="field" style="margin-bottom:8px;"><label>Pontos</label><input type="number" class="cfg_regime_pts" data-idx="${i}" value="${r.pontos}"></div>
+      <div class="field" style="margin-bottom:8px;"><button type="button" class="btn secondary" onclick="removeRegime(${i})">Remover</button></div>
+    </div>
+  `).join('') || '<span class="hint">Nenhum regime cadastrado.</span>';
+}
+function removeRegime(idx){
+  if(CFG.pontuacao.regimes.length<=1){ toast("Mantenha ao menos um regime cadastrado."); return; }
+  CFG.pontuacao.regimes.splice(idx,1);
+  renderConfigRegimeList();
+  renderRegimeSelect();
+  calcular();
+}
+document.getElementById('btnAddRegime').addEventListener('click', ()=>{
+  CFG.pontuacao.regimes.push({label:"Novo regime", pontos:10});
+  renderConfigRegimeList();
+  renderRegimeSelect();
+});
+
 function renderConfigComplexList(){
   const p = CFG.pontuacao;
   document.getElementById('cfg_complex_list').innerHTML = p.complexidades.map((c,i)=>`
@@ -670,6 +694,9 @@ function collectConfigFromForm(){
   CFG.custos.overheadPct = parseFloat(document.getElementById('cfg_overhead').value)||0;
   CFG.custos.impostosPct = parseFloat(document.getElementById('cfg_impostos').value)||0;
 
+  document.querySelectorAll('.cfg_regime_nome').forEach(inp=>{
+    CFG.pontuacao.regimes[parseInt(inp.dataset.idx)].label = inp.value;
+  });
   document.querySelectorAll('.cfg_regime_pts').forEach(inp=>{
     CFG.pontuacao.regimes[parseInt(inp.dataset.idx)].pontos = parseFloat(inp.value)||0;
   });
